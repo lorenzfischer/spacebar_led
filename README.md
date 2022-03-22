@@ -51,6 +51,8 @@ To run one of these tubes you need:
  - (~$5) an ESP8266 (I bought [10 for £25](https://www.amazon.co.uk/gp/product/B08QZ2887K/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1))
  - (~$8) an WS2812B LED strip (I used [60 LEDs/m strips from AliExpress](https://www.aliexpress.com/item/4000875413944.html?spm=a2g0o.order_detail.0.0.18b1f19cblbxeD), 5m is enough for two 0.5m tubes)
  - (~5-10) an acrylic/polycarbonate/pet tube (if you find a 30mm/32mm one, you can use the lids from above)
+ - a 14mm diameter wooden dowel, same length as the tube (minus 4mm, 2 each side for the cap)
+ - two wood screws 3x25mm
  - a 470 Ohms resistor
  - A 1000 uF capacitor
 
