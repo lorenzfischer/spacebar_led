@@ -1,4 +1,61 @@
-# Audio Reactive LED Strip
+# Swiss Space Bar LED Installation
+
+> Disclaimer: I am heavily re-using code of an existing project called [Audio Reactive LED Strip](https://github.com/scottlawsonbc/audio-reactive-led-strip)
+> by [Scott Lawson](https://github.com/scottlawsonbc). See below for the description of the original project. Please 
+> have a read through that, as it explains all of the basics around how to run the python code. I currently only use 
+> the "Computer + ESP8266" mode which I have extended to support multiple LED strip clients over a server broadcast
+> and client registration (see [client_management.py](python/client_management.py) )
+
+This project aims at developing a hybrid LED system that can be used (i) on a fixed location and (ii) on foot 
+when moving around. When multiple LED clients are in the same location, the light show will be sychronised, which 
+which should look nice at the bar, on bikes, or when walking around.
+
+The basic idea is to have:
+
+2. a series of LED "things" (LED clients) who are all being fed a light show by a
+3. server (either one of the clients or a dedicated server machine)
+
+To keep everything "mobile" we need some wireless communication as well as power from a battery.
+
+There are different modes of operations, currently the following 3 are envisioned:
+
+![modes of operation](images/spacebar_modes_of_operation.png)
+
+To see whether this is feasible, I have created a demo that is recorded here: https://youtu.be/f2kS4P1rJ0Y
+![demo video](https://i9.ytimg.com/vi/f2kS4P1rJ0Y/mq2.jpg?sqp=CNj_6JEG&rs=AOn4CLAyTjucriFLbbZ2J5Eq90fT9OFXTA)
+
+## ToDo List:
+
+ - [x] Build demo led tube and get others onboard
+ - [ ] Brainstorm other/better/larger LED setups (currently we use strips)
+   - [ ] Sync with Chef Juke about laser cutting acrylic discs so we could build a tube full of them looking a bit [like this](https://www.youtube.com/watch?v=GtKIkkLkrwU&t=1210s)
+ - [ ] Implement different resolutions (currently only 140 LED resolution supported)
+ - [ ] Figure out power (battery power)
+ - [ ] Figure out charging situation (using charge controller or through removable 18650s?)
+ - [ ] Design a handle that can be 3d-printed + easily re-charged overnight
+ - [ ] Add status LEDs to circuit and code
+ - [ ] Implement dynamic network ports (so we can restart faster) 
+
+## Build of sample tubes
+
+To build the sample tubes, I used ideas that I found in [this video](https://www.youtube.com/watch?v=qnP8-wJVAlI):
+1. I used a bunch of acrylic tubes (30mm/32mm inside/outside diameter - clear ones as amazon.co.uk didn't stock anything else) ![base tube](images/sample_tupe_clear_tube.jpg). I sanded them using 600 grit and then 1500 grit sandpaper to get them to diffuse the light.
+2. I then rolled the LED strip around the dowel (superglued each end) and closed the sides with 3D printed end caps ([lid.v2.stl](3d_objects/lid.v2.stl) and [lid.v2.with_hole](3d_objects/lid.v2.with_hole.gcode) both in [lid.v2.with_hole.2x.gcode](3d_objects/lid.v2.with_hole.2x.gcode) ready to be printed): ![tube assembly](images/sample_tube_assembly.jpg)
+3. For the circuit I pretty much used the [NeoPixel Wiring Diagram from Adafruit](https://learn.adafruit.com/adafruit-neopixel-uberguide/basic-connections). The only difference that I had is that I used the ESP8266, so the data pin is the RX pin. Currently I power the thing over 5V/Gnd using a USB cable of which I only use the 5V/GND cables (also I didn't have any 1000uF capacitors, so I used 2200uF ones): ![wiring diagram](https://cdn-learn.adafruit.com/assets/assets/000/030/892/medium800/leds_Wiring-Diagram.png?1456961114)
+
+## Shopping List
+To run one of these tubes you need:
+ - a mac or pc running python 3 (2 is not fully supported)
+ - a wifi access point in your network
+ - (~$5) an ESP8266 (I bought [10 for £25](https://www.amazon.co.uk/gp/product/B08QZ2887K/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1))
+ - (~$8) an WS2812B LED strip (I used [60 LEDs/m strips from AliExpress](https://www.aliexpress.com/item/4000875413944.html?spm=a2g0o.order_detail.0.0.18b1f19cblbxeD), 5m is enough for two 0.5m tubes)
+ - (~5-10) an acrylic/polycarbonate/pet tube (if you find a 30mm/32mm one, you can use the lids from above)
+ - a 470 Ohms resistor
+ - A 1000 uF capacitor
+
+-----
+
+# Original Description: Audio Reactive LED Strip
 Real-time LED strip music visualization using Python and the ESP8266 or Raspberry Pi.
 
 ![block diagram](images/block-diagram.png)
