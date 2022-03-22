@@ -18,12 +18,17 @@ to control the leds connected to it.
 """
 
 if DEVICE == 'esp8266':
-    UDP_IP = '192.168.0.150'
-    """IP address of the ESP8266. Must match IP in ws2812_controller.ino"""
-    UDP_PORT = 7777
-    """Port number used for socket communication between Python and ESP8266"""
     SOFTWARE_GAMMA_CORRECTION = False
     """Set to False because the firmware handles gamma correction + dither"""
+    MULTICAST_TTL = 1
+    """for all packets sent, after two hops on the network the packet will not 
+    be re-sent/broadcast (see https://www.tldp.org/HOWTO/Multicast-HOWTO-6.html)"""
+    MCAST_GRP = '224.1.1.1'
+    """multicast group ip"""
+    MCAST_PORT = 5555
+    """multicast port"""
+    SERVER_PORT = 1337
+    """the port at which the server receives registrations"""
 
 if DEVICE == 'pi':
     LED_PIN = 18
@@ -49,7 +54,7 @@ USE_GUI = True
 DISPLAY_FPS = True
 """Whether to display the FPS when running (can reduce performance)"""
 
-N_PIXELS = 60
+N_PIXELS = 140
 """Number of pixels in the LED strip (must match ESP8266 firmware)"""
 
 GAMMA_TABLE_PATH = os.path.join(os.path.dirname(__file__), 'gamma_table.npy')
@@ -58,7 +63,7 @@ GAMMA_TABLE_PATH = os.path.join(os.path.dirname(__file__), 'gamma_table.npy')
 MIC_RATE = 44100
 """Sampling frequency of the microphone in Hz"""
 
-FPS = 60
+FPS = 70
 """Desired refresh rate of the visualization (frames per second)
 
 FPS indicates the desired refresh rate, or frames-per-second, of the audio

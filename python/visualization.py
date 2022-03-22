@@ -3,10 +3,16 @@ from __future__ import division
 import time
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter1d
+import client_management
 import config
+import logging
 import microphone
 import dsp
 import led
+
+# setup logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(message)s')
 
 _time_prev = time.time() * 1000.0
 """The previous time that the frames_per_second() function was called"""
@@ -14,6 +20,11 @@ _time_prev = time.time() * 1000.0
 _fps = dsp.ExpFilter(val=config.FPS, alpha_decay=0.2, alpha_rise=0.2)
 """The low-pass filter used to estimate frames-per-second"""
 
+_clients = {}
+"""This is the dictionary where we keep all ip:port combinations that we need to send data to.
+    
+    { ip_address_as_string: port_as_int, ... }
+"""
 
 def frames_per_second():
     """Return the estimated frames per second
@@ -189,7 +200,7 @@ prev_fps_update = time.time()
 
 
 def microphone_update(audio_samples):
-    global y_roll, prev_rms, prev_exp, prev_fps_update
+    global y_roll, prev_rms, prev_exp, prev_fps_update, _clients
     # Normalize samples between 0 and 1
     y = audio_samples / 2.0**15
     # Construct a rolling window of audio samples
@@ -201,7 +212,7 @@ def microphone_update(audio_samples):
     if vol < config.MIN_VOLUME_THRESHOLD:
         print('No audio input. Volume below threshold. Volume:', vol)
         led.pixels = np.tile(0, (3, config.N_PIXELS))
-        led.update()
+        led.update(_clients)
     else:
         # Transform audio input into the frequency domain
         N = len(y_data)
@@ -223,7 +234,7 @@ def microphone_update(audio_samples):
         # Map filterbank output onto LED strip
         output = visualization_effect(mel)
         led.pixels = output
-        led.update()
+        led.update(_clients)
         if config.USE_GUI:
             # Plot filterbank output
             x = np.linspace(config.MIN_FREQUENCY, config.MAX_FREQUENCY, len(mel))
@@ -237,7 +248,7 @@ def microphone_update(audio_samples):
     
     if config.DISPLAY_FPS:
         fps = frames_per_second()
-        if time.time() - 0.5 > prev_fps_update:
+        if time.time() - 1 > prev_fps_update:
             prev_fps_update = time.time()
             print('FPS {:.0f} / {:.0f}'.format(fps, config.FPS))
 
@@ -350,7 +361,12 @@ if __name__ == '__main__':
         layout.addItem(energy_label)
         layout.addItem(scroll_label)
         layout.addItem(spectrum_label)
+
+    # start threads that broadcast server address & receive client registrations
+    client_management.start_client_manager(_clients, config.SERVER_PORT, config.MCAST_GRP, config.MCAST_PORT)
+
     # Initialize LEDs
-    led.update()
+    led.update(_clients)
+
     # Start listening to live audio stream
     microphone.start_stream(microphone_update)

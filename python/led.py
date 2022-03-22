@@ -8,7 +8,8 @@ import config
 # ESP8266 uses WiFi communication
 if config.DEVICE == 'esp8266':
     import socket
-    _sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    _sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    _sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, config.MULTICAST_TTL)
 # Raspberry Pi controls the LED strip directly
 elif config.DEVICE == 'pi':
     import neopixel
@@ -42,7 +43,8 @@ pixels = np.tile(1, (3, config.N_PIXELS))
 
 _is_python_2 = int(platform.python_version_tuple()[0]) == 2
 
-def _update_esp8266():
+
+def _update_esp8266(clients):
     """Sends UDP packets to ESP8266 to update LED strip values
 
     The ESP8266 will receive and decode the packets to determine what values
@@ -79,7 +81,8 @@ def _update_esp8266():
                 m.append(p[1][i])  # Pixel green value
                 m.append(p[2][i])  # Pixel blue value
         m = m if _is_python_2 else bytes(m)
-        _sock.sendto(m, (config.UDP_IP, config.UDP_PORT))
+        for (client_ip, client_port) in clients.items():  # send message to all clients1§
+            _sock.sendto(m, (client_ip, client_port))
     _prev_pixels = np.copy(p)
 
 
@@ -136,10 +139,10 @@ def _update_blinkstick():
     stick.set_led_data(0, newstrip)
 
 
-def update():
+def update(clients):
     """Updates the LED strip values"""
     if config.DEVICE == 'esp8266':
-        _update_esp8266()
+        _update_esp8266(clients)
     elif config.DEVICE == 'pi':
         _update_pi()
     elif config.DEVICE == 'blinkstick':
