@@ -39,7 +39,7 @@ To see whether this is feasible, I have created a demo that is recorded here: ht
 ## Build of sample tubes
 
 To build the sample tubes, I used ideas that I found in [this video](https://www.youtube.com/watch?v=qnP8-wJVAlI):
-1. I used a bunch of acrylic tubes (30mm/32mm inside/outside diameter - clear ones as amazon.co.uk didn't stock anything else) ![base tube](images/sample_tupe_clear_tube.jpg). I sanded them using 600 grit and then 1500 grit sandpaper to get them to diffuse the light.
+1. I used a bunch of acrylic tubes (30mm/32mm inside/outside diameter - clear ones as amazon.co.uk didn't stock anything else) ![base tube](images/sample_tube_clear_tube.jpg). I sanded them using 600 grit and then 1500 grit sandpaper to get them to diffuse the light.
 2. I then rolled the LED strip around the dowel (superglued each end) and closed the sides with 3D printed end caps ([lid.v2.stl](3d_objects/lid.v2.stl) and [lid.v2.with_hole](3d_objects/lid.v2.with_hole.gcode) both in [lid.v2.with_hole.2x.gcode](3d_objects/lid.v2.with_hole.2x.gcode) ready to be printed): ![tube assembly](images/sample_tube_assembly.jpg)
 3. For the circuit I pretty much used the [NeoPixel Wiring Diagram from Adafruit](https://learn.adafruit.com/adafruit-neopixel-uberguide/basic-connections). The only difference that I had is that I used the ESP8266, so the data pin is the RX pin. Currently I power the thing over 5V/Gnd using a USB cable of which I only use the 5V/GND cables (also I didn't have any 1000uF capacitors, so I used 2200uF ones): ![wiring diagram](https://cdn-learn.adafruit.com/assets/assets/000/030/892/medium800/leds_Wiring-Diagram.png?1456961114)
 
