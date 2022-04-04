@@ -22,7 +22,8 @@ There are different modes of operations, currently the following 3 are envisione
 ![modes of operation](images/spacebar_modes_of_operation.png)
 
 To see whether this is feasible, I have created a demo that is recorded here: https://youtu.be/f2kS4P1rJ0Y
-[![demo video](https://i9.ytimg.com/vi/f2kS4P1rJ0Y/mq2.jpg?sqp=CNj_6JEG&rs=AOn4CLAyTjucriFLbbZ2J5Eq90fT9OFXTA)]( https://youtu.be/f2kS4P1rJ0Y)
+[![demo video](images/led_demo.png)](https://youtu.be/f2kS4P1rJ0Y)
+(click to play)
 
 ## ToDo List:
 
