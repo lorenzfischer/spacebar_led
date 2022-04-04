@@ -14,6 +14,10 @@
 #error "This is not a ESP8266 or ESP32!"
 #endif
 
+// Wifi and socket settings
+const char* ssid     = "SSID_24";  // put in your (2.4GHz) WiFi SSID
+const char* password = "WIFI_PW";  // put the password for your WiFi
+
 // Set to the number of LEDs in your LED strip
 #define NUM_LEDS 140
 // Maximum number of packets to hold in the buffer. Don't change this.
@@ -23,10 +27,8 @@
 
 //NeoPixelBus settings
 const uint8_t PixelPin = 4;  // make sure to set this to the correct pin, ignored for Esp8266, which will use the RX pin (set to 3 by default for DMA)
+const RgbColor COLOR_OFF = RgbColor(0,0,0);
 
-// Wifi and socket settings
-const char* ssid     = "SSID_24";  // put in your (2.4GHz) WiFi SSID
-const char* password = "WIFI_PW";  // put the password for your WiFi
 unsigned int localPort = 7777;
 IPAddress multicastIp(224, 1, 1, 1);  // hard coded 
 unsigned int multicastPort = 5555;
@@ -43,38 +45,19 @@ uint8_t N = 0;
 WiFiUDP port;
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> ledstrip(NUM_LEDS, PixelPin);
 long lastPacketReceived;  // detect when we lose the connection to the server
-
-void setup() {
-    Serial.begin(115200);
-    WiFi.mode(WIFI_STA);
-    //WiFi.config(ip, gateway, subnet);  // uncomment this to override DHCP
-    WiFi.begin(ssid, password);  // we use DHCP for the ip configuration
-    Serial.println("");
-    // Connect to wifi and print the IP address over serial
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-    
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(ssid);
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-    
-    port.begin(localPort);
-//    port.beginMulticast(ip, IPAddress(224, 1, 1, 1), 5555);
-    
-    ledstrip.Begin();//Begin output
-    ledstrip.Show();//Clear the strip for use
-
-    lastPacketReceived = millis(); // start the count
-}
+uint16_t batteryLevel;  // we store the current battery level in this
 
 #if PRINT_FPS
     uint16_t fpsCounter = 0;
     uint32_t secondTimer = 0;
 #endif
+
+
+/** turns all LEDs on the strip off. */
+void clearStrip() {
+  ledstrip.ClearTo(COLOR_OFF);
+  ledstrip.Show();
+}
 
 
 /** 
@@ -131,6 +114,77 @@ void registerWithServer() {
 }
 
 
+#define READ_AT_42V 898.0  // this is what I read as the A0 value at 4.2V input (max voltage for 18650 cells)
+#define READ_AT_3V 642.0  // this is what I read as the A0 value at 3.0V input (min voltage for 18650 cells)
+//
+/** This method probes the A0 (analog 0 pin) to find the current battery level.*/
+int16_t measureBatteryLevel() {
+  int nVoltageRaw = analogRead(A0);
+  float batteryLevel = ((float) nVoltageRaw - READ_AT_3V) / (READ_AT_42V - READ_AT_3V) * 100;
+  return (int16_t) batteryLevel;
+}
+
+
+/** This measures the battery level and plays an animation on the strip to show the battery level. */
+void playBatteryAnimation() {
+  float batteryLevel;
+  
+  clearStrip(); // turn all LEDs off, so we get a clean battery reading  
+  batteryLevel = 1.0 * measureBatteryLevel() / 100;  // convert the 0-100 value into a float
+
+  // todo: use some cool animation to do this.
+  for (int p=0; p<NUM_LEDS; p++) {  // the pixel index
+    float pixelPercentage = (float)p / NUM_LEDS;
+    RgbColor color = COLOR_OFF;
+    if (pixelPercentage < batteryLevel) {
+      color = RgbColor(0, 255, 0); // green
+    }
+    ledstrip.SetPixelColor(p, color);
+  }
+  
+  ledstrip.Show();
+  delay(1*1000);
+
+  // clear to empty
+  clearStrip();
+}
+
+
+
+void setup() {
+    Serial.begin(115200);
+
+    ledstrip.Begin();//Begin output
+    ledstrip.Show();//Clear the strip for use
+
+    // measure battery level and display on the stip
+    playBatteryAnimation();
+    
+    // connect to wifi
+    WiFi.mode(WIFI_STA);
+    //WiFi.config(ip, gateway, subnet);  // uncomment this to override DHCP
+    WiFi.begin(ssid, password);  // we use DHCP for the ip configuration
+    Serial.println("");
+    // Connect to wifi and print the IP address over serial
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    
+    Serial.println("");
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+
+    // start listening for messages from the server
+    port.begin(localPort);
+//    port.beginMulticast(ip, IPAddress(224, 1, 1, 1), 5555);
+
+    lastPacketReceived = millis(); // start the count
+}
+
+
 void loop() {
     // Read data over socket
     int packetSize = port.parsePacket();
@@ -162,7 +216,7 @@ void loop() {
     #if PRINT_FPS
         if (millis() - secondTimer >= 1000U) {
             secondTimer = millis();
-            Serial.printf("FPS: %d\n", fpsCounter);
+            Serial.printf("FPS: %d BAT: %d % \n", fpsCounter, 100);
             fpsCounter = 0;
         }   
     #endif
