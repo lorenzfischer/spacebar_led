@@ -24,7 +24,7 @@ def get_ip():
     return IP
 
 
-def start_server_broadcasting(mcast_group_ip, mcast_port):
+def start_server_broadcasting(mcast_group_ip, mcast_port, server_port):
     """Starts a thread that repeatedly broadcasts the server IP"""
     def broadcast_server_ip():
         while True:
@@ -36,11 +36,12 @@ def start_server_broadcasting(mcast_group_ip, mcast_port):
                 raise Exception("Python2 is not supported, please test the below if you want to use python2")
 
             ip_parts = [int(p) for p in server_ip.split(".")]  # todo: find a way to pack the port into a byte
-            message = bytes(ip_parts)
+            port_parts = int(server_port).to_bytes(2, byteorder="big")
+            message = bytes(ip_parts) + port_parts
             _sock.sendto(message, (mcast_group_ip, mcast_port))  # broadcast the 5 ints
             time.sleep(5)  # sleep 5 seconds
 
-    broadcasting_thread = threading.Thread(target=broadcast_server_ip)
+    broadcasting_thread = threading.Thread(target=broadcast_server_ip, daemon=True)
     broadcasting_thread.start()
     logging.info("Starting server broadcast")
 
@@ -56,7 +57,7 @@ def start_client_registration_server(client_list, server_port):
                     client_port = int.from_bytes(conn.recv(1024), byteorder='little')
                     client_list[addr] = client_port
                     logging.info(f"Registered client at {addr}:{client_port}")
-    broadcasting_thread = threading.Thread(target=client_registration_server)
+    broadcasting_thread = threading.Thread(target=client_registration_server, daemon=True)
     broadcasting_thread.start()
     logging.info("Starting registration server")
 
@@ -65,5 +66,5 @@ def start_client_manager(client_list, server_port, mcast_group_ip, mcast_port):
     """This starts the server broadcast over the configured multicast as well as the server accepting client
     registrations"""
 
-    start_server_broadcasting(mcast_group_ip, mcast_port)
+    start_server_broadcasting(mcast_group_ip, mcast_port, server_port)
     start_client_registration_server(client_list, server_port)
