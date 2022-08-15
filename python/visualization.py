@@ -232,7 +232,7 @@ def microphone_update(audio_samples):
         mel /= mel_gain.value
         mel = mel_smoothing.update(mel)
         # Map filterbank output onto LED strip
-        output = visualization_effect(mel)
+        output = visualization_effect(mel)  # <------------  call the various visualisations
         led.pixels = output
         led.update(_clients)
         if config.USE_GUI:
