@@ -7,32 +7,6 @@ private const val TAG = "Lightshow"
 
 abstract class Lightshow() {
 
-    // todo: think of the advantage of making this immutable
-    class LedValue(val ledIndex: Int, var red: Int, var green: Int, var blue:Int) {
-
-        fun asByteList(): List<Byte> {
-            return listOf<Byte>(ledIndex.toByte(), red.toByte(), green.toByte(), blue.toByte())
-        }
-
-        fun dimBy(rate: Double): LedValue {
-            red = ((1-rate) * red).toInt()
-            green = ((1-rate) * green).toInt()
-            blue = ((1-rate) * blue).toInt()
-            return this
-        }
-
-        override fun toString(): String {
-            return "r:$red g:$green b:$blue"
-        }
-
-    }
-
-
-    init {
-
-    }
-
-
     /**
      * Returns the number of frames per second (FPS) this lightshow would optimally want to
      * run at.
