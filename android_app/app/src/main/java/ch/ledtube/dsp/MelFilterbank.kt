@@ -13,7 +13,7 @@ import kotlin.math.pow
  * here: https://github.com/scottlawsonbc/audio-reactive-led-strip/blob/master/python/melbank.py
  */
 class MelFilterbank(
-    val numMelBands: Int = 24, val freqMin: Double = 20.0, val freqMax: Double = 8000.0,
+    val numMelBands: Int = 24, val freqMin: Double = 200.0, val freqMax: Double = 12000.0,
     val numFftBands: Int = 630, val sampleRate: Int = 44100
     // todo: switch fftbands to 512 again
     // todo: switch sampleRate back to 16000 ?
