@@ -49,3 +49,4 @@ Temporary Items
 *.pdf
 .idea/
 arduino/ws2812_controller/wifi.txt
+**/.ipynb_checkpoints/
