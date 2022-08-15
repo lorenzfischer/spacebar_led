@@ -37,7 +37,7 @@ def start_server_broadcasting(mcast_group_ip, mcast_port, server_port):
 
             ip_parts = [int(p) for p in server_ip.split(".")]  # todo: find a way to pack the port into a byte
             port_parts = int(server_port).to_bytes(2, byteorder="big")
-            message = bytes(ip_parts) + port_parts
+            message = bytes(ip_parts)  # + port_parts # todo: fix this!!
             _sock.sendto(message, (mcast_group_ip, mcast_port))  # broadcast the 5 ints
             time.sleep(5)  # sleep 5 seconds
 
