@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".StaticLightshowFragment">
+
+    <Button
+        android:id="@+id/button_white_static"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="Just White"
+        app:layout_constraintBottom_toTopOf="@+id/button_pulsating"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="143dp" />
+
+    <Button
+        android:id="@+id/button_pulsating"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="Pulsating"
+        app:layout_constraintBottom_toTopOf="@+id/button_pingpong"
+        app:layout_constraintTop_toBottomOf="@+id/button_white_static"
+        tools:layout_editor_absoluteX="158dp" />
+
+    <Button
+        android:id="@+id/button_pingpong"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="Ping Pong"
+        app:layout_constraintBottom_toTopOf="@+id/button_off"
+        app:layout_constraintTop_toBottomOf="@+id/button_pulsating"
+        tools:layout_editor_absoluteX="158dp" />
+
+    <Button
+        android:id="@+id/button_off"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="LEDs off!"
+        app:layout_constraintTop_toBottomOf="@+id/button_pingpong"
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="309dp" />
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

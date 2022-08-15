@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/fragment_visualization">
+
+    <fragment
+        android:id="@+id/fragment_visualization"
+        android:name="ch.ledtube.VisualizationFragment"
+        android:label="@string/first_fragment_label"
+        tools:layout="@layout/fragment_visualization">
+        <action
+            android:id="@+id/action_visualization_to_devicediscovery"
+            app:destination="@id/fragment_device_discovery" />
+
+        <action
+            android:id="@+id/action_visualization_to_staticlightshow"
+            app:destination="@id/fragment_static_lightshow" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/fragment_static_lightshow"
+        android:name="ch.ledtube.StaticLightshowFragment"
+        android:label="Static Lightshow"
+        tools:layout="@layout/fragment_static_lightshow">
+        <action
+            android:id="@+id/action_staticlightshow_to_visualization"
+            app:destination="@id/fragment_visualization" />
+        <action
+            android:id="@+id/action_staticlightshow_to_devicediscovery"
+            app:destination="@id/fragment_device_discovery" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/fragment_device_discovery"
+        android:name="ch.ledtube.LedDeviceDisoveryFragment"
+        android:label="Device Discovery"
+        tools:layout="@layout/fragment_led_device_discovery">
+        <action
+            android:id="@+id/action_SecondFragment_to_FirstFragment"
+            app:destination="@id/fragment_visualization" />
+        <action
+            android:id="@+id/action_devicedisovery_to_staticlightshow"
+            app:destination="@id/fragment_static_lightshow" />
+    </fragment>
+
+
+</navigation>

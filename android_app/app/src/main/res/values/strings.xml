@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">LED Tube</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="action_visualizer">Visualizer</string>
+    <string name="action_static_lightshow">Static Lightshow</string>
+    <string name="action_led_detector">LED detector</string>
+
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="button_visualization_start">Visualize</string>
+    <string name="button_visualization_stop">Enough!</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+</resources>
