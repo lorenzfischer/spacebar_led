@@ -3,8 +3,9 @@ In other words it is a filter bank with triangular shaped bands
 arnged on the mel frequency scale.
 An example ist shown in the following figure:
 .. plot::
-    from pylab import plt
+    import matplotlib.pyplot as plt
     import melbank
+
     f1, f2 = 1000, 8000
     melmat, (melfreq, fftfreq) = melbank.compute_melmat(6, f1, f2, num_fft_bands=4097)
     fig, ax = plt.subplots(figsize=(8, 3))
