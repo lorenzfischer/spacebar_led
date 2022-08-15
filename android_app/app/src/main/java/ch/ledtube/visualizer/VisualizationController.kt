@@ -11,6 +11,7 @@ import ch.ledtube.Utils
 import ch.ledtube.dsp.SmoothingFilter
 import ch.ledtube.dsp.MelFilterbank
 import org.jetbrains.kotlinx.multik.api.d1array
+import org.jetbrains.kotlinx.multik.api.d2array
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.api.ndarray
 import org.jetbrains.kotlinx.multik.ndarray.data.D1Array
@@ -46,7 +47,7 @@ class VisualizationController(
     private var melBank: MelFilterbank? = null
 
     private var gainFilter = SmoothingFilter(
-        mk.ndarray(mk[0.1]),
+        mk.d1array(numMelBands) { 0.1 },
         alphaDecay=0.01, alphaRise=0.99
     )
 
@@ -133,10 +134,10 @@ class VisualizationController(
                 val melValues: D1Array<Double> = melB.convertToMel(buffer)
 
                 // make differences starker
-                val starker = melValues * melValues
+                val starker = melValues * melValues * melValues
 
                 // todo: gaussian smoothing
-                val gain = gainFilter.update(mk.ndarray(mk[starker.max() ?: 0.0])).get(0)
+                val gain = gainFilter.update(starker)
                 val gainNormalized = starker / gain
                 val smoothed = smoothingFilter.update(gainNormalized)
                 val doubleArray = smoothed.toDoubleArray()
