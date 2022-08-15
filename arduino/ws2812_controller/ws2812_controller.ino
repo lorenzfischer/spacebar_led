@@ -17,8 +17,8 @@
 #endif
 
 // Wifi and socket settings
-const char* ssid     = "dune_24";  // your (2.4GHz) WiFi SSID
-const char* password = "indyshadow9";  // your WiFi password
+const char* ssid     = "network_ssid";  // your (2.4GHz) WiFi SSID
+const char* password = "your_password";  // your WiFi password
 
 // Set to the number of LEDs in your LED strip
 #define NUM_LEDS 140
@@ -54,6 +54,7 @@ uint8_t N = 0;
 WiFiUDP port;
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> ledstrip(NUM_LEDS, PixelPin);
 NeoPixelAnimator animations(NUM_ANIMATION_CHANNELS); // NeoPixel animation management object, with 
+uint8_t _numberOfZeroPacketReceipts = 0;
 long _lastPacketReceived;  // detect when we lose the connection to the server
 float _batteryLevel;  // we store the current battery level in this
 long _lastBatteryUpdateMillis = millis();  // store when we last updated the battery
@@ -289,7 +290,7 @@ void loop() {
       int packetSize = port.parsePacket();
       
       if (packetSize == 0) {
-
+        _numberOfZeroPacketReceipts++;
         /* 
          * TODO: 
          * 
@@ -305,10 +306,15 @@ void loop() {
         
         if (!connectedToServer()) {
           registerWithServer();  
-        } 
+        } else { // if we are connected to the server, but still didn't receive any packets
+          if (_numberOfZeroPacketReceipts >= 2) {
+            delay(_numberOfZeroPacketReceipts * 10);  
+            Serial.printf(".");
+          }
+        }
         
       } else {  // If packets have been received, interpret the command
-  
+          _numberOfZeroPacketReceipts = 0; 
           _lastPacketReceived = millis();
           int len = port.read(packetBuffer, BUFFER_LEN);
           packetBuffer[len] = 0;  // what is this for?
