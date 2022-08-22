@@ -17,8 +17,8 @@
 #endif
 
 // Wifi and socket settings
-const char* ssid     = "network_ssid";  // your (2.4GHz) WiFi SSID
-const char* password = "your_password";  // your WiFi password
+const char* ssid     = "WIFI_SSID";  // your (2.4GHz) WiFi SSID
+const char* password = "WIFI_PW";  // your WiFi password
 
 // Set to the number of LEDs in your LED strip
 #define NUM_LEDS 140

@@ -80,14 +80,9 @@ class VisualizationFragment : Fragment() {
                 if (this.visController == null) {
                     this.visController = VisualizationController()
                 }
-
                 Utils.safeLet(visController, ledServiceBinder) { ctrlr, ledService ->
-                    if (ledServiceBinder?.getCurrentlyRunningLightshow() is MusicEnergyLightshow) {
-                        Log.d(TAG, "pausing")
-                        binding.buttonVisualizeEnergy.setText("Visualize Energy")
-                        ledService.startSendingLightshow(AllOffLightshow())
-                    } else {
-                        Log.d(TAG, "starting")
+                    if (aledServiceBinder?.getCurrentlyRunningLightshow() !is MusicEnergyLightshow) {
+                        Log.d(TAG, "starting MusicEnergyLightshow")
                         binding.buttonVisualizeEnergy.setText(R.string.button_visualization_stop)
                         ctrlr.startVisualizer(requireActivity())
                         ctrlr.updateReceiver = binding.visualizerview
@@ -100,14 +95,9 @@ class VisualizationFragment : Fragment() {
             if (this.visController == null) {
                 this.visController = VisualizationController()
             }
-
             Utils.safeLet(visController, ledServiceBinder) { ctrlr, ledService ->
-                if (ledServiceBinder?.getCurrentlyRunningLightshow() is MusicEnergyLightshow) {
-                    Log.d(TAG, "pausing")
-                    binding.buttonVisualizeScroll.setText("Visualize Scroll")
-                    ledService.startSendingLightshow(AllOffLightshow())
-                } else {
-                    Log.d(TAG, "starting")
+                if (ledServiceBinder?.getCurrentlyRunningLightshow() !is MusicScrollLightshow) {
+                    Log.d(TAG, "starting MusicScrollLightshow")
                     binding.buttonVisualizeScroll.setText(R.string.button_visualization_stop)
                     ctrlr.startVisualizer(requireActivity())
                     ctrlr.updateReceiver = binding.visualizerview

@@ -48,7 +48,7 @@ class VisualizationController(
 
     private var gainFilter = SmoothingFilter(
         mk.d1array(numMelBands) { 0.1 },
-        alphaDecay=0.01, alphaRise=0.99
+        alphaDecay=0.001, alphaRise=0.75
     )
 
     /**

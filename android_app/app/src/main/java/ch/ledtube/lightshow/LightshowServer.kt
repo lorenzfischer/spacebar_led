@@ -47,7 +47,7 @@ class LightshowServer(val context: Context): Runnable {
         Log.d(TAG, "starting lightshow server")
 
         val socket = DatagramSocket()
-        val devices = db.deviceDao().getAll()
+        var devices = db.deviceDao().getAll()
         var frame = 0
         var fpsMeasureMillis = System.currentTimeMillis()
         var totalSleepTime = 0L
@@ -92,6 +92,9 @@ class LightshowServer(val context: Context): Runnable {
                 frame = 0
                 fpsMeasureMillis = System.currentTimeMillis()
                 totalSleepTime = 0L
+
+                // also update all the registered devices every second
+                devices = db.deviceDao().getAll()
             }
 
             frame++

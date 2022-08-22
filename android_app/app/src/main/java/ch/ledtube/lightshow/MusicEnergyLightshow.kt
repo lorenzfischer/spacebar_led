@@ -26,8 +26,8 @@ class MusicEnergyLightshow(controller: VisualizationController): MusicLightshow(
     var ledMatrix: NDArray<Double, D2> = mk.d2array(3, getResolution()) { 0.0 }
     val smoothing = SmoothingFilter(
         ledMatrix.copy(),
-        alphaRise = 0.8,
-        alphaDecay = 0.0001
+        alphaRise = 0.6,
+        alphaDecay = 0.01
     )
 
     override fun getFrame(): NDArray<Double, D2> {
