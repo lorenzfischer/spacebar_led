@@ -1,25 +1,26 @@
 package ch.ledtube.visualizer
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.media.*
 import android.media.audiofx.Visualizer
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import ch.ledtube.Utils
-import ch.ledtube.dsp.SmoothingFilter
 import ch.ledtube.dsp.MelFilterbank
+import ch.ledtube.dsp.SmoothingFilter
 import org.jetbrains.kotlinx.multik.api.d1array
-import org.jetbrains.kotlinx.multik.api.d2array
 import org.jetbrains.kotlinx.multik.api.mk
-import org.jetbrains.kotlinx.multik.api.ndarray
 import org.jetbrains.kotlinx.multik.ndarray.data.D1Array
-import org.jetbrains.kotlinx.multik.ndarray.data.get
 import org.jetbrains.kotlinx.multik.ndarray.operations.div
-import org.jetbrains.kotlinx.multik.ndarray.operations.max
 import org.jetbrains.kotlinx.multik.ndarray.operations.times
 import org.jetbrains.kotlinx.multik.ndarray.operations.toDoubleArray
+
 
 private const val TAG = "VisualizationController"
 
@@ -51,6 +52,11 @@ class VisualizationController(
         alphaDecay=0.001, alphaRise=0.75
     )
 
+    /** We use this object to listen to the microphone of the phone. */
+    private var micRecord: AudioRecord? = null
+
+    private var micTrack: AudioTrack? = null
+
     /**
      * This receiver will be informed about FFt updates, whenever theyare requested over
      * {#getVisualizationData}. This enables us to inform some UI component whenever an update
@@ -72,6 +78,8 @@ class VisualizationController(
         return this.visualizer != null
     }
 
+
+
     /**
      * Starts the visualizer which is able to receive audio data from the system.
      * This code might pop up a dialog asking the user for permission to listen in on the audio.
@@ -79,11 +87,58 @@ class VisualizationController(
      *
      * @param owner the activity we can use to pop up the premission dialog.
      */
+    @SuppressLint("MissingPermission")
+    @RequiresApi(Build.VERSION_CODES.M)
     fun startVisualizer(owner: FragmentActivity) {
         if (allPermissionsGranted(owner)) {
             if (visualizer == null) {
                 Log.d(TAG, "starting visualiser")
+
+//                // connect to microphone
+//                val rate = 44100
+//                val channels = AudioFormat.CHANNEL_IN_MONO
+//                val encoding = AudioFormat.ENCODING_PCM_16BIT
+//                val bufferSize = AudioRecord.getMinBufferSize(rate, channels,encoding)
+//                micRecord = AudioRecord(
+//                    MediaRecorder.AudioSource.MIC,
+//                    rate,
+//                    channels,
+//                    encoding,
+//                    bufferSize
+//                )
+////                micTrack = AudioTrack.Builder()
+////                    .setAudioAttributes(
+////                        AudioAttributes.Builder()
+////                            .setUsage(AudioAttributes.USAGE_MEDIA)
+////                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+////                            .build()
+////                    )
+////                    .setAudioFormat(
+////                        AudioFormat.Builder()
+////                            .setEncoding(encoding)
+////                            .setSampleRate(rate)
+////                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+////                            .build()
+////                    )
+////                    .setBufferSizeInBytes(bufferSize)
+////                    .build()
+////                val buffer = ByteArray(bufferSize);
+//                micRecord!!.startRecording()
+//                Log.d(TAG, "started recording")
+//                Thread{
+//                    micRecord!!.startRecording()
+////                    micTrack!!.play()
+////
+////                    while(micTrack != null) {
+////                        Utils.safeLet(micRecord, micTrack) { rec, track ->
+////                            rec.read(buffer, 0, bufferSize);
+////                            track.write(buffer, 0, buffer.size);
+////                        }
+////                    }
+//                }.run()
+
                 visualizer = Visualizer(0)  // 0 => "apply to the output mix."
+//                visualizer = Visualizer(micRecord!!.audioSessionId)
                 visualizer!!.enabled = false
                 visualizer!!.scalingMode = Visualizer.SCALING_MODE_AS_PLAYED  // otherwise we get loud silence between songs
                 visualizer!!.captureSize = numFftBuckets * 2 // we will only get half of this as our frequency bands
@@ -154,8 +209,15 @@ class VisualizationController(
         }
     }
 
+    // todo: call this!!
     fun deleteVisualizer() {
         visualizer?.release()
+        micRecord?.stop()
+        micRecord?.release()
+        micRecord = null
+        micTrack?.stop()
+        micTrack?.release()
+        micTrack = null
     }
 
 }

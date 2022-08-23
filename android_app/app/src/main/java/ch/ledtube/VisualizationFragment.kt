@@ -81,7 +81,7 @@ class VisualizationFragment : Fragment() {
                     this.visController = VisualizationController()
                 }
                 Utils.safeLet(visController, ledServiceBinder) { ctrlr, ledService ->
-                    if (aledServiceBinder?.getCurrentlyRunningLightshow() !is MusicEnergyLightshow) {
+                    if (ledServiceBinder?.getCurrentlyRunningLightshow() !is MusicEnergyLightshow) {
                         Log.d(TAG, "starting MusicEnergyLightshow")
                         binding.buttonVisualizeEnergy.setText(R.string.button_visualization_stop)
                         ctrlr.startVisualizer(requireActivity())

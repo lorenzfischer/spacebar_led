@@ -46,6 +46,9 @@ class LightshowServer(val context: Context): Runnable {
     override fun run() {
         Log.d(TAG, "starting lightshow server")
 
+        // hopefully this minimizes stutters!
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
+
         val socket = DatagramSocket()
         var devices = db.deviceDao().getAll()
         var frame = 0
