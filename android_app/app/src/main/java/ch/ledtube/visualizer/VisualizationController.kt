@@ -12,6 +12,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import ch.ledtube.Utils
+import ch.ledtube.dsp.Complex
+import ch.ledtube.dsp.FFT
 import ch.ledtube.dsp.MelFilterbank
 import ch.ledtube.dsp.SmoothingFilter
 import org.jetbrains.kotlinx.multik.api.d1array
@@ -20,6 +22,7 @@ import org.jetbrains.kotlinx.multik.ndarray.data.D1Array
 import org.jetbrains.kotlinx.multik.ndarray.operations.div
 import org.jetbrains.kotlinx.multik.ndarray.operations.times
 import org.jetbrains.kotlinx.multik.ndarray.operations.toDoubleArray
+import java.nio.ByteBuffer
 
 
 private const val TAG = "VisualizationController"
@@ -52,10 +55,13 @@ class VisualizationController(
         alphaDecay=0.001, alphaRise=0.75
     )
 
+    private val rate = 44100
+    private val channels = AudioFormat.CHANNEL_IN_MONO
+    private val encoding = AudioFormat.ENCODING_PCM_16BIT
+    private val audioBufferSizeBytes = numFftBuckets // AudioRecord.getMinBufferSize(rate, channels,encoding)
+
     /** We use this object to listen to the microphone of the phone. */
     private var micRecord: AudioRecord? = null
-
-    private var micTrack: AudioTrack? = null
 
     /**
      * This receiver will be informed about FFt updates, whenever theyare requested over
@@ -94,48 +100,17 @@ class VisualizationController(
             if (visualizer == null) {
                 Log.d(TAG, "starting visualiser")
 
-//                // connect to microphone
-//                val rate = 44100
-//                val channels = AudioFormat.CHANNEL_IN_MONO
-//                val encoding = AudioFormat.ENCODING_PCM_16BIT
-//                val bufferSize = AudioRecord.getMinBufferSize(rate, channels,encoding)
-//                micRecord = AudioRecord(
-//                    MediaRecorder.AudioSource.MIC,
-//                    rate,
-//                    channels,
-//                    encoding,
-//                    bufferSize
-//                )
-////                micTrack = AudioTrack.Builder()
-////                    .setAudioAttributes(
-////                        AudioAttributes.Builder()
-////                            .setUsage(AudioAttributes.USAGE_MEDIA)
-////                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-////                            .build()
-////                    )
-////                    .setAudioFormat(
-////                        AudioFormat.Builder()
-////                            .setEncoding(encoding)
-////                            .setSampleRate(rate)
-////                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-////                            .build()
-////                    )
-////                    .setBufferSizeInBytes(bufferSize)
-////                    .build()
-////                val buffer = ByteArray(bufferSize);
-//                micRecord!!.startRecording()
-//                Log.d(TAG, "started recording")
-//                Thread{
-//                    micRecord!!.startRecording()
-////                    micTrack!!.play()
-////
-////                    while(micTrack != null) {
-////                        Utils.safeLet(micRecord, micTrack) { rec, track ->
-////                            rec.read(buffer, 0, bufferSize);
-////                            track.write(buffer, 0, buffer.size);
-////                        }
-////                    }
-//                }.run()
+                // connect to microphone
+                micRecord = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    rate,
+                    channels,
+                    encoding,
+                    audioBufferSizeBytes
+                )
+
+                Log.d(TAG, "started recording")
+                micRecord!!.startRecording()
 
                 visualizer = Visualizer(0)  // 0 => "apply to the output mix."
 //                visualizer = Visualizer(micRecord!!.audioSessionId)
@@ -183,7 +158,48 @@ class VisualizationController(
     }
 
     fun getVisualizationData(): DoubleArray? {
-        return Utils.safeLet(visualizer, melBank) { vis, melB ->
+        return Utils.safeLet(visualizer, melBank) { vis, melB -> // todo: redo this without visualizer in case of mic input
+
+            micRecord?.let {
+                val audioBuffer = ByteArray(audioBufferSizeBytes)
+                it.read(audioBuffer, 0, audioBufferSizeBytes);
+//                val magnitude = DoubleArray(audioBufferSizeBytes / 2)
+
+                //Create Complex array for use in FFT
+                val complexInputArray = arrayOfNulls<Complex>(audioBufferSizeBytes)
+                for (i in 0 until audioBufferSizeBytes) {
+                    complexInputArray[i] = Complex(audioBuffer[i].toDouble(), 0.0)
+                }
+
+                //Obtain array of FFT data
+                val fftComplexArray: Array<Complex> = FFT.fft(complexInputArray) // returns fftTempArray.size() / 2
+                (0..audioBufferSizeBytes/2).forEach {
+                    buffer[2 * it] = fftComplexArray[it].re().toInt().toByte()
+                    buffer[2 * it + 1] = fftComplexArray[it].im().toInt().toByte()
+                }
+
+                // remove copy!
+//                Log.d(TAG, "I'm in here now!")
+                val melValues: D1Array<Double> = melB.convertToMel(buffer)
+
+                // make differences starker
+                val starker = melValues * melValues * melValues
+
+                // todo: gaussian smoothing
+                val gain = gainFilter.update(starker)
+                val gainNormalized = starker / gain
+                val smoothed = smoothingFilter.update(gainNormalized)
+                val doubleArray = smoothed.toDoubleArray()
+
+                // update the receiver, if one is registered
+                this.updateReceiver?.let {
+                    it.onVisualizerDataCapture(doubleArray!!)
+                }
+
+                return doubleArray
+            }
+
+            // todo: reactivate
             if (vis.getFft(buffer) == Visualizer.SUCCESS) {
 
                 val melValues: D1Array<Double> = melB.convertToMel(buffer)
@@ -203,9 +219,9 @@ class VisualizationController(
                 }
 
                 return doubleArray
-            } else {
-                return null
             }
+
+            return null
         }
     }
 
@@ -215,9 +231,110 @@ class VisualizationController(
         micRecord?.stop()
         micRecord?.release()
         micRecord = null
-        micTrack?.stop()
-        micTrack?.release()
-        micTrack = null
     }
 
 }
+
+
+
+
+// https://stackoverflow.com/questions/42153673/how-to-calculate-frequency-level-from-audio-recorder-mic-input-data
+// 
+//int bufferSizeInBytes = 1024;
+//short[] buffer = new short[bufferSizeInBytes];
+//class Recording extends Thread {
+//
+//    @Override
+//    public void run() {
+//
+//        while () {
+//
+//            if (true) {
+//                int bufferReadResult = audioInput.read(buffer, 0, bufferSizeInBytes); // record data from mic into buffer
+//                if (bufferReadResult > 0) {
+//                    calculate();
+//                }
+//            }
+//        }
+//    }
+//}
+//public void calculate() {
+//
+//    double[] magnitude = new double[bufferSizeInBytes / 2];
+//
+//    //Create Complex array for use in FFT
+//    Complex[] fftTempArray = new Complex[bufferSizeInBytes];
+//    for (int i = 0; i < bufferSizeInBytes; i++) {
+//        fftTempArray[i] = new Complex(buffer[i], 0);
+//    }
+//
+//    //Obtain array of FFT data
+//    final Complex[] fftArray = FFT.fft(fftTempArray);
+//    // calculate power spectrum (magnitude) values from fft[]
+//    for (int i = 0; i < (bufferSizeInBytes / 2) - 1; ++i) {
+//
+//        double real = fftArray[i].re();
+//        double imaginary = fftArray[i].im();
+//        magnitude[i] = Math.sqrt(real * real + imaginary * imaginary);
+//
+//    }
+//
+//    // find largest peak in power spectrum
+//    double max_magnitude = magnitude[0];
+//    int max_index = 0;
+//    for (int i = 0; i < magnitude.length; ++i) {
+//        if (magnitude[i] > max_magnitude) {
+//            max_magnitude = (int) magnitude[i];
+//            max_index = i;
+//        }
+//    }
+//    double freq = 44100 * max_index / bufferSizeInBytes;//here will get frequency in hz like(17000,18000..etc)
+//
+//}
+
+
+
+
+// what I had before:
+//                // connect to microphone
+//                val rate = 44100
+//                val channels = AudioFormat.CHANNEL_IN_MONO
+//                val encoding = AudioFormat.ENCODING_PCM_16BIT
+//                val bufferSize = AudioRecord.getMinBufferSize(rate, channels,encoding)
+//                micRecord = AudioRecord(
+//                    MediaRecorder.AudioSource.MIC,
+//                    rate,
+//                    channels,
+//                    encoding,
+//                    bufferSize
+//                )
+////                micTrack = AudioTrack.Builder()
+////                    .setAudioAttributes(
+////                        AudioAttributes.Builder()
+////                            .setUsage(AudioAttributes.USAGE_MEDIA)
+////                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+////                            .build()
+////                    )
+////                    .setAudioFormat(
+////                        AudioFormat.Builder()
+////                            .setEncoding(encoding)
+////                            .setSampleRate(rate)
+////                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+////                            .build()
+////                    )
+////                    .setBufferSizeInBytes(bufferSize)
+////                    .build()
+////                val buffer = ByteArray(bufferSize);
+//                micRecord!!.startRecording()
+//                Log.d(TAG, "started recording")
+//                Thread{
+//                    micRecord!!.startRecording()
+////                    micTrack!!.play()
+////
+////                    while(micTrack != null) {
+////                        Utils.safeLet(micRecord, micTrack) { rec, track ->
+////                            rec.read(buffer, 0, bufferSize);
+////                            track.write(buffer, 0, buffer.size);
+////                        }
+////                    }
+//                }.run()
