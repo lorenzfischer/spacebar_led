@@ -6,6 +6,7 @@
 #include <NeoPixelBus.h>
 #include <NeoPixelAnimator.h>
 #include <math.h>  // we need this to get M_PI
+#include "WIFICredentials.hpp" // define your SSID and PASSWORD in here
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -16,21 +17,21 @@
 #error "This is not a ESP8266 or ESP32!"
 #endif
 
-// Wifi and socket settings
-const char* ssid     = "WIFI_SSID";  // your (2.4GHz) WiFi SSID
-const char* password = "WIFI_PW";  // your WiFi password
+// Wifi settings from WIFICredntials.hpp
+const char* ssid     = MY_SSID;  // your (2.4GHz) WiFi SSID
+const char* password = MY_WIFI_PASSWORD;  // your WiFi password
 
-// Set to the number of LEDs in your LED strip
-#define NUM_LEDS 140
+// Set to the number of LEDs in your LED strip, led_tube=140, 3m cable=150
+#define NUM_LEDS 150
 // Maximum number of packets to hold in the buffer. Don't change this.
 #define BUFFER_LEN 1024
 // Toggles FPS output (1 = print FPS over serial, 0 = disable output)
-#define PRINT_FPS 1
+#define PRINT_FPS 0
 #define NUM_ANIMATION_CHANNELS 3 // 1=battery, 2=network, 3=not defined yet
 #define ANIMATION_CHANNEL_BATTERY 0
 #define ANIMATION_CHANNEL_NETWORK 1
 #define ANIMATION_SECONDS_BATTERY 2 // we want the battery animation to take 2 seconds
-#define ANIMATION_SECONDS_NETWORK 10 // we want the network animation to run for at most 10 seconds
+#define ANIMATION_SECONDS_NETWORK 20 // we want the network animation to run for at most 20 seconds
 #define BATTERY_UPDATE_INTERVAL_SECONDS 10  // we only update the battery level every 10 seconds
 #define SERVER_TIMEOUT_SECONDS 10  // wait for 10 seconds before trying to reconnect
 
@@ -91,6 +92,7 @@ void registerWithServer() {
   // turn off all the LEDs while we're doing this
   clearStrip();
   
+  Serial.println(" ");
   Serial.print("Listening for server broadcast ");
   mcast.beginMulticast(WiFi.localIP(), multicastIp, multicastPort);
   for (int i=0; i<20 && !serverIp; i++) {
@@ -107,7 +109,7 @@ void registerWithServer() {
   mcast.stop();
 
   if (!serverIp) {
-    Serial.print(" no server found!");
+    Serial.println(" no server found!");
   } else {
     Serial.print(" server found at ");
     Serial.println(serverIp);
@@ -121,7 +123,11 @@ void registerWithServer() {
       Serial.println(" connection failed");
       delay(500);
     } else {  // connection to server established
-      client.write((uint8_t*) &localPort,sizeof(localPort)); // the server will see our ip, so we only have to tell it the port we're listing on
+      // Send the localPort value as 2 bytes (in little-endian format)
+      uint8_t buffer[2];
+      buffer[0] = localPort & 0xFF;        // Low byte
+      buffer[1] = (localPort >> 8) & 0xFF; // High byte
+      client.write(buffer, 2);  // Send the 2-byte value
       client.stop();
       Serial.println(" client registered!");
     }
@@ -200,7 +206,7 @@ void playBatteryAnimation() {
 
 
 void connectToWifi() {
-  Serial.println("");
+  Serial.println(" ");
   Serial.printf("Connecting to %s ...\n", ssid);
   WiFi.mode(WIFI_STA);
   //WiFi.config(ip, gateway, subnet);  // uncomment this to override DHCP
@@ -218,7 +224,7 @@ void networkStatusUpdate(const AnimationParam& param) {
     int fullAnimation = 10 * 360; // we want the white leds to move up and down 10 times, at most
     float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
     float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
-    float waveNorm = (wave + 1) / 2;  // .. so we normalise it here
+    float waveNorm = (wave + 1) / 2;  // .. so we normalise itbo here
     float pixelsOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
 
     for (int p=0; p<NUM_LEDS; p++) {  // the pixel index
@@ -230,7 +236,7 @@ void networkStatusUpdate(const AnimationParam& param) {
     }  
     
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("");
+      Serial.println(" ");
       Serial.printf("Connected to %s\n", ssid);
       Serial.print("IP address: ");
       Serial.println(WiFi.localIP());
@@ -309,7 +315,7 @@ void loop() {
         } else { // if we are connected to the server, but still didn't receive any packets
           if (_numberOfZeroPacketReceipts >= 2) {
             delay(_numberOfZeroPacketReceipts * 10);  
-            Serial.printf(".");
+            Serial.print(".");
           }
         }
         
