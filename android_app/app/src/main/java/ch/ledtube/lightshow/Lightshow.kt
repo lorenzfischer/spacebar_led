@@ -20,7 +20,7 @@ abstract class Lightshow() {
      * @return the resolution (i.e. the number of LEDs) this lightshow operates at. Default is 144.
      */
     fun getResolution(): Int {
-        return 140
+        return 150 // the LED tubes only have 140 LEDs
     }
 
 

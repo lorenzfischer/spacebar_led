@@ -55,6 +55,59 @@ class ServerBroadcaster(
         return ""
     }
 
+    /**
+     * Get all the wifi interfaces
+     * @return  a list of network interfaces
+     */
+    private fun getWIFIInterfaces(): List<NetworkInterface>? {
+        val wifiInterfaces = ArrayList<NetworkInterface>()
+        try {
+            val interfaces: List<NetworkInterface> =
+                Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (networkInterface in interfaces) {
+                if (networkInterface.isUp && networkInterface.name.contains("wlan", ignoreCase = true)) {
+                    wifiInterfaces.add(networkInterface)
+                }
+            }
+        } catch (ignored: Exception) {
+            Log.e(TAG, "Problem when trying to get this device's IP address")
+        } // for now eat exceptions
+        return wifiInterfaces
+    }
+
+    private fun broadcastOnAllWIFIDevices() {
+        val wifiInterfaces = getWIFIInterfaces()
+        if (wifiInterfaces == null) {
+            Log.e(TAG, "Could not get the phone/tablet's IP address")
+        } else {
+            for (wifiInterface in wifiInterfaces) {
+                for (wifiAddress in wifiInterface.inetAddresses) {
+                    val ipAddressString = wifiAddress.hostAddress
+                    val isIPv4 = ipAddressString.indexOf(':') < 0
+                    if (isIPv4) {
+                        val addressBytes =
+                            ipAddressString.split(".").map { elem -> elem.toInt().toByte() }
+                        val messageBytes = addressBytes // + portBytes.toList()
+                        val packet = DatagramPacket(
+                            messageBytes.toByteArray(),
+                            messageBytes.size,
+                            this.multicastAddress,
+                            this.multicastPort
+                        )
+
+                        // broadcast server address
+                        synchronized(this.running) {
+                            Log.d(TAG, "broadcasting $ipAddressString")
+                            this.socket?.networkInterface =
+                                wifiInterface // send on specific interface
+                            this.socket?.send(packet)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun stopBroadcaster() {
         this.running.set(false)
         synchronized(this.running) {
@@ -65,36 +118,13 @@ class ServerBroadcaster(
     }
 
     override fun run() {
-//        Log.d(TAG, "Starting the broadcaster")
+        Log.d(TAG, "Starting the broadcaster")
         this.socket = MulticastSocket(multicastPort)
 
-        val ipAddress = getIPAddress()
-
-        if (ipAddress == null) {
-            Log.e(TAG, "Could not get the phone/tablet's IP address")
-        } else {
-            val addressBytes = ipAddress.split(".").map { elem -> elem.toInt().toByte() }
-            // todo: add port as well, and also update the ESP8266 code
-//            val portBytes = ByteArray(2)
-//            for (i in 0..1) portBytes[i] = (serverPort shr (i*8)).toByte()
-            val messageBytes = addressBytes // + portBytes.toList()
-            val packet = DatagramPacket(
-                messageBytes.toByteArray(),
-                messageBytes.size,
-                this.multicastAddress,
-                this.multicastPort
-            )
-
-            this.running.set(true)
-            while (this.running.get()) {
-                // broadcast server address
-                synchronized(this.running) {
-                    this.socket?.send(packet)
-                }
-                Thread.sleep(1000)
-            }
+        this.running.set(true)
+        while (this.running.get()) {
+            broadcastOnAllWIFIDevices()
+            Thread.sleep(5 * 1000)
         }
     }
-
-
 }

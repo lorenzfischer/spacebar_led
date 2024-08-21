@@ -23,8 +23,8 @@ const char* password = MY_WIFI_PASSWORD;  // your WiFi password
 
 // Set to the number of LEDs in your LED strip, led_tube=140, 3m cable=150
 #define NUM_LEDS 150
-// Maximum number of packets to hold in the buffer. Don't change this.
-#define BUFFER_LEN 1024
+// Maximum number of packets to hold in the buffer. It was 1024.. My notes were "Don't change this" :grimacing"
+#define BUFFER_LEN 2048
 // Toggles FPS output (1 = print FPS over serial, 0 = disable output)
 #define PRINT_FPS 0
 #define NUM_ANIMATION_CHANNELS 3 // 1=battery, 2=network, 3=not defined yet
@@ -315,7 +315,7 @@ void loop() {
         } else { // if we are connected to the server, but still didn't receive any packets
           if (_numberOfZeroPacketReceipts >= 2) {
             delay(_numberOfZeroPacketReceipts * 10);  
-            Serial.print(".");
+            //Serial.print(".");
           }
         }
         
@@ -329,19 +329,19 @@ void loop() {
               RgbColor pixel((uint8_t)packetBuffer[i+1], (uint8_t)packetBuffer[i+2], (uint8_t)packetBuffer[i+3]);//color
               ledstrip.SetPixelColor(N, pixel);//N is the pixel number
           } 
-          #if PRINT_FPS
-              fpsCounter++;
-              Serial.print("/");//Monitors connection(shows jumps/jitters in packets)
-          #endif
+//          #if PRINT_FPS
+//              fpsCounter++;
+//              Serial.print("/");//Monitors connection(shows jumps/jitters in packets)
+//          #endif
           
       }
-      #if PRINT_FPS
-          if (millis() - secondTimer >= 1000U) {
-              secondTimer = millis();
-              Serial.printf("FPS: %d BAT: %d%% \n", fpsCounter, (int) round(_batteryLevel * 100));
-              fpsCounter = 0;
-          }   
-      #endif
+//      #if PRINT_FPS
+//          if (millis() - secondTimer >= 1000U) {
+//              secondTimer = millis();
+//              Serial.printf("FPS: %d BAT: %d%% \n", fpsCounter, (int) round(_batteryLevel * 100));
+//              fpsCounter = 0;
+//          }   
+//      #endif
       
     }
     ledstrip.Show();

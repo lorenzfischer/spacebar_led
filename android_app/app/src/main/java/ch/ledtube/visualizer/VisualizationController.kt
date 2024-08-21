@@ -134,23 +134,19 @@ class VisualizationController(
             ||
             ContextCompat.checkSelfPermission(owner, Manifest.permission.MODIFY_AUDIO_SETTINGS)
             != PackageManager.PERMISSION_GRANTED
-            ||
-            ContextCompat.checkSelfPermission(owner, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
+//            ||
+//            ContextCompat.checkSelfPermission(owner, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+//            != PackageManager.PERMISSION_GRANTED
         ) {
-//            if (ActivityCompat.shouldShowRequestPermissionRationale(thisActivity,
-//                    Manifest.permission.READ_CONTACTS)) {
-//                // Show an explanation to the user *asynchronously* -- don't block
-//                // this thread waiting for the user's response! After the user
-//                // sees the explanation, try again to request the permission.
-//            } else {
-                // No explanation needed; request the permission
-                ActivityCompat.requestPermissions(owner, arrayOf(
-                                                                Manifest.permission.RECORD_AUDIO,
-                                                                Manifest.permission.MODIFY_AUDIO_SETTINGS,
-                                                                 Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ), PERMISSION_REQUEST_CODE);
-//            }
+            ActivityCompat.requestPermissions(
+                owner,
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.MODIFY_AUDIO_SETTINGS,
+//                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ),
+                PERMISSION_REQUEST_CODE
+            );
             return false // the user will have to click again TODO: make this nicer
         } else {
             return true
@@ -239,7 +235,7 @@ class VisualizationController(
 
 
 // https://stackoverflow.com/questions/42153673/how-to-calculate-frequency-level-from-audio-recorder-mic-input-data
-// 
+//
 //int bufferSizeInBytes = 1024;
 //short[] buffer = new short[bufferSizeInBytes];
 //class Recording extends Thread {

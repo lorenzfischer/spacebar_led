@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="ch.ledtube">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--this is needed to use android.media.audiofx.Visualizer-->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!--this is needed to connect the visualizer to audio session 0 (output mix) -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>-->
 
     <!-- this is required for the LightShow and Discovery services to run in the background -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
@@ -15,6 +14,12 @@
     <!-- this, we need to communicate with the LED tubes over the network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+        This is so we can run foreground services to have led tubes register
+        and run the visualization
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 
     <!-- Permission to operate with PowerLocks -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
