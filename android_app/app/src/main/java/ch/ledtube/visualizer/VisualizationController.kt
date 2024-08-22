@@ -12,13 +12,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import ch.ledtube.Utils
-import ch.ledtube.dsp.Complex
-import ch.ledtube.dsp.FFT
-import ch.ledtube.dsp.MelFilterbank
-import ch.ledtube.dsp.SmoothingFilter
+import ch.ledtube.dsp.*
 import org.jetbrains.kotlinx.multik.api.d1array
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.ndarray.data.D1Array
+import org.jetbrains.kotlinx.multik.ndarray.operations.Inplace
 import org.jetbrains.kotlinx.multik.ndarray.operations.div
 import org.jetbrains.kotlinx.multik.ndarray.operations.times
 import org.jetbrains.kotlinx.multik.ndarray.operations.toDoubleArray
@@ -45,7 +43,7 @@ class VisualizationController(
     private val PERMISSION_REQUEST_CODE = 1337 // TODO figure out where you need to put this
     private var visualizer: Visualizer? = null
 
-    private val numFftBuckets = numMelBands * 4  // TODO: think about this a bit more!
+    private val numFftBuckets = 1024 // numMelBands * 4  // TODO: think about this a bit more!
 
     private var buffer = ByteArray(numFftBuckets * 2)
     private var melBank: MelFilterbank? = null
@@ -57,11 +55,13 @@ class VisualizationController(
 
     private val rate = 44100
     private val channels = AudioFormat.CHANNEL_IN_MONO
-    private val encoding = AudioFormat.ENCODING_PCM_16BIT
+    private val encoding = AudioFormat.ENCODING_PCM_8BIT
     private val audioBufferSizeBytes = numFftBuckets // AudioRecord.getMinBufferSize(rate, channels,encoding)
 
     /** We use this object to listen to the microphone of the phone. */
     private var micRecord: AudioRecord? = null
+
+    private var micTrack: AudioTrack? = null
 
     /**
      * This receiver will be informed about FFt updates, whenever theyare requested over
@@ -108,9 +108,19 @@ class VisualizationController(
                     encoding,
                     audioBufferSizeBytes
                 )
+                micTrack = AudioTrack.Builder()
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .setEncoding(encoding)
+                            .setSampleRate(rate)
+                            .build()
+                    )
+                    .build()
 
                 Log.d(TAG, "started recording")
                 micRecord!!.startRecording()
+                micTrack!!.play()
 
                 visualizer = Visualizer(0)  // 0 => "apply to the output mix."
 //                visualizer = Visualizer(micRecord!!.audioSessionId)
@@ -134,19 +144,23 @@ class VisualizationController(
             ||
             ContextCompat.checkSelfPermission(owner, Manifest.permission.MODIFY_AUDIO_SETTINGS)
             != PackageManager.PERMISSION_GRANTED
-//            ||
-//            ContextCompat.checkSelfPermission(owner, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-//            != PackageManager.PERMISSION_GRANTED
+            ||
+            ContextCompat.checkSelfPermission(owner, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(
-                owner,
-                arrayOf(
-                    Manifest.permission.RECORD_AUDIO,
-                    Manifest.permission.MODIFY_AUDIO_SETTINGS,
-//                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
-                PERMISSION_REQUEST_CODE
-            );
+//            if (ActivityCompat.shouldShowRequestPermissionRationale(thisActivity,
+//                    Manifest.permission.READ_CONTACTS)) {
+//                // Show an explanation to the user *asynchronously* -- don't block
+//                // this thread waiting for the user's response! After the user
+//                // sees the explanation, try again to request the permission.
+//            } else {
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(owner, arrayOf(
+                                                                Manifest.permission.RECORD_AUDIO,
+                                                                Manifest.permission.MODIFY_AUDIO_SETTINGS,
+                                                                 Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ), PERMISSION_REQUEST_CODE);
+//            }
             return false // the user will have to click again TODO: make this nicer
         } else {
             return true
@@ -156,48 +170,46 @@ class VisualizationController(
     fun getVisualizationData(): DoubleArray? {
         return Utils.safeLet(visualizer, melBank) { vis, melB -> // todo: redo this without visualizer in case of mic input
 
-            micRecord?.let {
-                val audioBuffer = ByteArray(audioBufferSizeBytes)
-                it.read(audioBuffer, 0, audioBufferSizeBytes);
-//                val magnitude = DoubleArray(audioBufferSizeBytes / 2)
-
-                //Create Complex array for use in FFT
-                val complexInputArray = arrayOfNulls<Complex>(audioBufferSizeBytes)
-                for (i in 0 until audioBufferSizeBytes) {
-                    complexInputArray[i] = Complex(audioBuffer[i].toDouble(), 0.0)
-                }
-
-                //Obtain array of FFT data
-                val fftComplexArray: Array<Complex> = FFT.fft(complexInputArray) // returns fftTempArray.size() / 2
-                (0..audioBufferSizeBytes/2).forEach {
-                    buffer[2 * it] = fftComplexArray[it].re().toInt().toByte()
-                    buffer[2 * it + 1] = fftComplexArray[it].im().toInt().toByte()
-                }
-
-                // remove copy!
-//                Log.d(TAG, "I'm in here now!")
-                val melValues: D1Array<Double> = melB.convertToMel(buffer)
-
-                // make differences starker
-                val starker = melValues * melValues * melValues
-
-                // todo: gaussian smoothing
-                val gain = gainFilter.update(starker)
-                val gainNormalized = starker / gain
-                val smoothed = smoothingFilter.update(gainNormalized)
-                val doubleArray = smoothed.toDoubleArray()
-
-                // update the receiver, if one is registered
-                this.updateReceiver?.let {
-                    it.onVisualizerDataCapture(doubleArray!!)
-                }
-
-                return doubleArray
-            }
+//            micRecord?.let {
+//                val audioBuffer = ByteArray(audioBufferSizeBytes)
+//                it.read(audioBuffer, 0, audioBufferSizeBytes);
+//
+//                micTrack?.write(audioBuffer, 0, audioBufferSizeBytes)
+//
+////                val magnitude = DoubleArray(audioBufferSizeBytes / 2)
+////                Log.d(TAG, audioBuffer.map{it.toDouble()}.joinToString(", "))
+//                //Create Complex array for use in FFT
+//                val fftComplexArray = audioBuffer.map{ Complex(it.toDouble(), 0.0) }.toTypedArray()
+//                InplaceFft.fft(fftComplexArray)
+//                (0..audioBufferSizeBytes/2).forEach {
+//                    buffer[2 * it] = fftComplexArray[it].re().toInt().toByte()
+//                    buffer[2 * it + 1] = fftComplexArray[it].im().toInt().toByte()
+//                }
+//
+//                // remove copy!
+//                val melValues: D1Array<Double> = melB.convertToMel(buffer)
+//
+//                // make differences starker
+//                val starker = melValues * melValues * melValues
+//
+//                // todo: gaussian smoothing
+//                val gain = gainFilter.update(starker)
+//                val gainNormalized = starker / gain
+//                val smoothed = smoothingFilter.update(gainNormalized)
+//                val doubleArray = smoothed.toDoubleArray()
+//
+//                // update the receiver, if one is registered
+//                this.updateReceiver?.let {
+//                    it.onVisualizerDataCapture(doubleArray!!)
+//                }
+//
+//                return doubleArray
+//            }
 
             // todo: reactivate
             if (vis.getFft(buffer) == Visualizer.SUCCESS) {
-
+                //Log.d(TAG, buffer.map{it.toDouble()}.joinToString(", "))
+                //Log.d(TAG, buffer.map{it}.joinToString(", "))
                 val melValues: D1Array<Double> = melB.convertToMel(buffer)
 
                 // make differences starker
@@ -235,7 +247,7 @@ class VisualizationController(
 
 
 // https://stackoverflow.com/questions/42153673/how-to-calculate-frequency-level-from-audio-recorder-mic-input-data
-//
+// 
 //int bufferSizeInBytes = 1024;
 //short[] buffer = new short[bufferSizeInBytes];
 //class Recording extends Thread {

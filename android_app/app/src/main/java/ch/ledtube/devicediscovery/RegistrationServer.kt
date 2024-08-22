@@ -7,8 +7,6 @@ import ch.ledtube.devicediscovery.db.AppDatabase
 import ch.ledtube.devicediscovery.db.Device
 import java.io.DataInputStream
 import java.net.*
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "RegistrationServer"
@@ -59,8 +57,7 @@ class RegistrationServer(val context: Context, val serverPort: Int = 1337): Runn
 
                     val buffer = ByteArray(2) // ports are two bytes long
                     dataInputStream.read(buffer, 0, buffer.size)
-//                    val clientPort = littleEndianConversion(buffer)
-                    val clientPort = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).short.toInt() and 0xFFFF
+                    val clientPort = littleEndianConversion(buffer)
 
                     val ipPort = "$clientAddress:$clientPort"
                     val device = Device(ipPort = ipPort)

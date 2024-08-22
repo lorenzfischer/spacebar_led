@@ -110,11 +110,11 @@ class LedService: Service() {
 
     fun stopLookingForClients() {
         Log.d(TAG, "Stop looking for clients")
-        this.registrationServer?.let {
-            it.stopRegistrationServer()
-        }
         this.broadcaster?.let {
             it.stopBroadcaster()
+        }
+        this.registrationServer?.let {
+            it.stopRegistrationServer()
         }
     }
 

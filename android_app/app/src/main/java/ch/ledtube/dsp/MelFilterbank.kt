@@ -117,7 +117,7 @@ class MelFilterbank(
         val fftNdArray: NDArray<Double, D2> = mk.ndarray(fftArrayBroadcasted)
         val melValues = fftNdArray * this.melMatrix
         val melSums: List<Double> = (0 until numMelBands).map {
-            melValues[it].sum()
+            melValues[it].fold(0.0){ acc, nxt -> acc + nxt }
         }
          return mk.ndarray(melSums)
     }

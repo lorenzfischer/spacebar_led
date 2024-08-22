@@ -14,7 +14,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import ch.ledtube.databinding.FragmentStaticLightshowBinding
 import ch.ledtube.lightshow.*
-import ch.ledtube.power.BatteryDrainer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -30,9 +29,6 @@ class StaticLightshowFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-
-    // functionality to try to prevent stutters
-    lateinit var batteryDrainer: BatteryDrainer
 
     /** We use this to run multiple background threads. */
     private val executorService: ExecutorService = Executors.newFixedThreadPool(3)
@@ -63,11 +59,11 @@ class StaticLightshowFragment : Fragment() {
         }
     }
 
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        batteryDrainer = BatteryDrainer(requireContext())
+    ): View? {
         _binding = FragmentStaticLightshowBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -76,25 +72,38 @@ class StaticLightshowFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        this.binding.buttonWhiteStatic.setOnClickListener {
-            batteryDrainer.startDraining()
-            ledServiceBinder?.startSendingLightshow(StaticWhiteLightshow())
-        }
+        this.binding.buttonWhiteStatic.setOnClickListener(
+            View.OnClickListener {
+                ledServiceBinder?.let {
+                    it.startSendingLightshow(StaticWhiteLightshow())
+                }
+            }
+        )
 
-        this.binding.buttonPulsating.setOnClickListener {
-            batteryDrainer.startDraining()
-            ledServiceBinder?.startSendingLightshow(PulsatingLightshow())
-        }
+        this.binding.buttonPulsating.setOnClickListener(
+            View.OnClickListener {
+                ledServiceBinder?.let {
+                    it.startSendingLightshow(PulsatingLightshow())
+                }
+            }
+        )
 
-        this.binding.buttonPingpong.setOnClickListener {
-            batteryDrainer.startDraining()
-            ledServiceBinder?.startSendingLightshow(PingPongLightshow())
-        }
+        this.binding.buttonPingpong.setOnClickListener(
+            View.OnClickListener {
+                ledServiceBinder?.let {
+                    it.startSendingLightshow(PingPongLightshow())
+                }
+            }
+        )
 
-        this.binding.buttonOff.setOnClickListener {
-            batteryDrainer.stopDraining()
-            ledServiceBinder?.startSendingLightshow(AllOffLightshow())
-        }
+
+        this.binding.buttonOff.setOnClickListener(
+            View.OnClickListener {
+                ledServiceBinder?.let {
+                    it.startSendingLightshow(AllOffLightshow())
+                }
+            }
+        )
     }
 
     override fun onResume() {

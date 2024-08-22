@@ -27,13 +27,21 @@ const char* password = MY_WIFI_PASSWORD;  // your WiFi password
 #define BUFFER_LEN 2048
 // Toggles FPS output (1 = print FPS over serial, 0 = disable output)
 #define PRINT_FPS 0
-#define NUM_ANIMATION_CHANNELS 3 // 1=battery, 2=network, 3=pingpong
+#define NUM_ANIMATION_CHANNELS 5 // 1=battery, 2=network, 3=pingpong, 4=rainbow, 5=police
 #define ANIMATION_CHANNEL_BATTERY 0
 #define ANIMATION_CHANNEL_NETWORK 1
 #define ANIMATION_CHANNEL_PINGPONG 2
+#define ANIMATION_CHANNEL_RAINBOW 3
+#define ANIMATION_CHANNEL_POLICE 4
 #define ANIMATION_SECONDS_BATTERY 2    // we want the battery animation to take 2 seconds
-#define ANIMATION_SECONDS_PINGPONG 120  // run for 10 seconds and ...
-#define ANIMATION_LOOPS_PINGPONG 15    // do 10 loops
+#define ANIMATION_SECONDS_PINGPONG 120  // run for 2 minutes seconds and ...
+#define ANIMATION_SECONDS_RAINBOW 10
+#define ANIMATION_SECONDS_POLICE 10
+
+#define ANIMATION_PINGPONG_SECONDS_PER_LOOP 5
+#define ANIMATION_POLICE_SECONDS_FLIP_FLOP 1
+#define ANIMATION_POLICE_STROBO_PER_SECOND 10
+#define ANIMATION_POLICE_NUM_LIGHTS 20
 
 #define WIFI_CONNECTION_TIMEOUT_SECONDS 1  // we wait only a few seonds for the wifi before giving up
 #define BATTERY_UPDATE_INTERVAL_SECONDS 10  // we only update the battery level every 10 seconds
@@ -64,9 +72,12 @@ float _batteryLevel;  // we store the current battery level in this
 long _lastBatteryUpdateMillis = millis();  // store when we last updated the battery
 long _lastPacketReceived;  // detect when we lose the connection to the server
 uint8_t _numberOfZeroPacketReceipts = 0;
+
+// vars for animations
 int _animationColor[3];
 RgbColor _animationArrayColor[NUM_LEDS];
 uint8_t _animationArrayBrightness[NUM_LEDS];
+uint8_t _lastAnimation = -1;
 
 #if PRINT_FPS
     uint16_t fpsCounter = 0;
@@ -231,48 +242,122 @@ void playPingpongAnimation() {
 
 
 void pingpongAnimationUpdate(const AnimationParam& param) {
-  // we fake a progress that's twice the actual progress, so the battery level can be seen half of the time
-  float fakeProgress = 2 * param.progress;  
-  //  Serial.println(param.progress);
-  
   if (param.state == AnimationState_Completed) {
       playNextAnimation();
   } else {
-    if (fakeProgress < 1.0) {
-      /* We want the pingpong animation to run ANIMATION_LOOPS_PINGPONG loops */
-      int fullAnimation = 360 * ANIMATION_LOOPS_PINGPONG;
-      float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
-      float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
-      float waveNorm = (wave + 1) / 2;  // .. so we normalise it here
-      uint8_t pixelOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
+    int animationLoops = ANIMATION_SECONDS_PINGPONG / ANIMATION_PINGPONG_SECONDS_PER_LOOP;// we want one loop to take at least this long
+    
+    /* We want the pingpong animation to run ANIMATION_LOOPS_PINGPONG loops */
+    int fullAnimation = 360 * animationLoops;
+    float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
+    float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
+    float waveNorm = (wave + 1) / 2;  // .. so we normalise it here
+    uint8_t pixelOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
 
 
-      // cycle through the colors - 510 = 2 * 255, so we cycle up and down the spectrum
-      _animationColor[0] = (_animationColor[0] + 1) % 510;  // red cycles at speed 1
-      _animationColor[1] = (_animationColor[1] + 1) % 510;  // green cycles at speed 1
-      _animationColor[2] = (_animationColor[2] + 1) % 510;  // blue cycles at speed 1
+    // cycle through the colors - 510 = 2 * 255, so we cycle up and down the spectrum
+    _animationColor[0] = (_animationColor[0] + 1) % 510;  // red cycles at speed 1
+    _animationColor[1] = (_animationColor[1] + 1) % 510;  // green cycles at speed 1
+    _animationColor[2] = (_animationColor[2] + 1) % 510;  // blue cycles at speed 1
 
-      RgbColor colorToSet = RgbColor(
-        _animationColor[0] / 2,
-        _animationColor[1] / 2,
-        _animationColor[2] / 2
+    RgbColor colorToSet = RgbColor(
+      _animationColor[0] / 2,
+      _animationColor[1] / 2,
+      _animationColor[2] / 2
+    );
+
+    _animationArrayColor[pixelOn] = colorToSet;
+
+    for (int p=0; p<NUM_LEDS; p++) {  
+      if (p == pixelOn) { // set one pixel on and to full brightness
+        _animationArrayBrightness[p] = 100;
+      } else { // reduce brightness of all other leds
+        _animationArrayBrightness[p] = 0.95 * _animationArrayBrightness[p];
+      }
+      SetPixelColor(
+        p,
+        _animationArrayColor[p], 
+        _animationArrayBrightness[p]
       );
+    }  
+  }
+}
 
-      _animationArrayColor[pixelOn] = colorToSet;
 
-      for (int p=0; p<NUM_LEDS; p++) {  
-        if (p == pixelOn) { // set one pixel on and to full brightness
-          _animationArrayBrightness[p] = 100;
-        } else { // reduce brightness of all other leds
-          _animationArrayBrightness[p] = 0.95 * _animationArrayBrightness[p];
-        }
-        SetPixelColor(
-          p,
-          _animationArrayColor[p], 
-          _animationArrayBrightness[p]
-        );
-      }  
-    }
+void playPoliceAnimation() {
+  clearStrip();
+
+  Serial.println("Playing police");
+  animations.StartAnimation(
+    ANIMATION_CHANNEL_POLICE,
+    ANIMATION_SECONDS_POLICE * 1000,
+    policeAnimationUpdate
+  );
+}
+
+
+void policeAnimationUpdate(const AnimationParam& param) {
+  if (param.state == AnimationState_Completed) {
+      playNextAnimation();
+  } else {
+    
+    // calculate which section of lights should be active
+    int secondWeAreIn = param.progress * ANIMATION_SECONDS_POLICE;
+    uint8_t section = (secondWeAreIn / ANIMATION_POLICE_SECONDS_FLIP_FLOP) % 2;
+
+    // calculate the strobo
+    float partsOfASecond = (param.progress * ANIMATION_SECONDS_POLICE) - secondWeAreIn;
+
+    printf("section: %d second: %d parts: %2.5f\n", section, secondWeAreIn, partsOfASecond);
+    
+    // ANIMATION_POLICE_STROBO_PER_SECOND
+
+    // set lights
+
+  }
+}
+
+
+void playRainbowAnimation() {
+  clearStrip();
+
+  Serial.println("Playing rainbow");
+
+  // innitialize data structures
+  _animationColor[0] = 255; 
+  _animationColor[1] = 0;
+  _animationColor[2] = 255; 
+
+  animations.StartAnimation(
+    ANIMATION_CHANNEL_RAINBOW,
+    ANIMATION_SECONDS_RAINBOW * 1000,
+    rainbowAnimationUpdate
+  );
+}
+
+
+void rainbowAnimationUpdate(const AnimationParam& param) {
+  if (param.state == AnimationState_Completed) {
+      playNextAnimation();
+  } else {
+    
+    // move all pixels by one
+    for (int p=NUM_LEDS-1; p>0; p--) {  
+      ledstrip.SetPixelColor(p, ledstrip.GetPixelColor(p-1));
+    }  
+
+    // find a new color for pixel 0
+    // cycle through the colors - 510 = 2 * 255, so we cycle up and down the spectrum
+    _animationColor[0] = (_animationColor[0] + 1) % 510;  // red cycles at speed 1
+    _animationColor[1] = (_animationColor[1] + 1) % 510;  // green cycles at speed 1
+    _animationColor[2] = (_animationColor[2] + 1) % 510;  // blue cycles at speed 1
+    RgbColor colorToSet = RgbColor(
+      _animationColor[0] / 2,
+      _animationColor[1] / 2,
+      _animationColor[2] / 2
+    );
+    ledstrip.SetPixelColor(0, colorToSet);
+
   }
 }
 
@@ -293,7 +378,22 @@ void playBatteryAnimation() {
 void playNextAnimation() {
   clearStrip();
   Serial.println("Playing next animation");
-  playPingpongAnimation();
+
+  playPoliceAnimation();
+
+  // _lastAnimation = (_lastAnimation + 1) % 2;
+  // switch (_lastAnimation) {
+  //   case 0:
+  //     playRainbowAnimation();
+  //     break;
+  //   case 1:
+  //     playPingpongAnimation();
+  //     break;
+  //   case 2: 
+  //     playPoliceAnimation();
+  //     break;
+  // }
+  
 }
 
 

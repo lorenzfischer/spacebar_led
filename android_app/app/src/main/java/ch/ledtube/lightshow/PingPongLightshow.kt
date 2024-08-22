@@ -13,9 +13,9 @@ private const val TAG = "PingPongLightshow"
 
 
 class PingPongLightshow(
-    val millisPerPulse: Int = 3000,
+    val millisPerPulse: Int = 2000,
     val millisPerColorCycle: Int = 10 * 1000,
-    val tailFade: Double = 0.15): Lightshow() {
+    val tailFade: Double = 0.2): Lightshow() {
 
     var ledMatrix: NDArray<Double, D2> = mk.d2array(3, getResolution()) { 0.0 }
 
@@ -67,7 +67,7 @@ class PingPongLightshow(
 
 
     override fun getFps(): Int {
-        return 70
+        return 40
     }
 
 }
