@@ -27,11 +27,15 @@ const char* password = MY_WIFI_PASSWORD;  // your WiFi password
 #define BUFFER_LEN 2048
 // Toggles FPS output (1 = print FPS over serial, 0 = disable output)
 #define PRINT_FPS 0
-#define NUM_ANIMATION_CHANNELS 3 // 1=battery, 2=network, 3=not defined yet
+#define NUM_ANIMATION_CHANNELS 3 // 1=battery, 2=network, 3=pingpong
 #define ANIMATION_CHANNEL_BATTERY 0
 #define ANIMATION_CHANNEL_NETWORK 1
-#define ANIMATION_SECONDS_BATTERY 2 // we want the battery animation to take 2 seconds
-#define ANIMATION_SECONDS_NETWORK 20 // we want the network animation to run for at most 20 seconds
+#define ANIMATION_CHANNEL_PINGPONG 2
+#define ANIMATION_SECONDS_BATTERY 2    // we want the battery animation to take 2 seconds
+#define ANIMATION_SECONDS_PINGPONG 120  // run for 10 seconds and ...
+#define ANIMATION_LOOPS_PINGPONG 15    // do 10 loops
+
+#define WIFI_CONNECTION_TIMEOUT_SECONDS 1  // we wait only a few seonds for the wifi before giving up
 #define BATTERY_UPDATE_INTERVAL_SECONDS 10  // we only update the battery level every 10 seconds
 #define SERVER_TIMEOUT_SECONDS 10  // wait for 10 seconds before trying to reconnect
 
@@ -55,10 +59,14 @@ uint8_t N = 0;
 WiFiUDP port;
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> ledstrip(NUM_LEDS, PixelPin);
 NeoPixelAnimator animations(NUM_ANIMATION_CHANNELS); // NeoPixel animation management object, with 
-uint8_t _numberOfZeroPacketReceipts = 0;
-long _lastPacketReceived;  // detect when we lose the connection to the server
+
 float _batteryLevel;  // we store the current battery level in this
 long _lastBatteryUpdateMillis = millis();  // store when we last updated the battery
+long _lastPacketReceived;  // detect when we lose the connection to the server
+uint8_t _numberOfZeroPacketReceipts = 0;
+int _animationColor[3];
+RgbColor _animationArrayColor[NUM_LEDS];
+uint8_t _animationArrayBrightness[NUM_LEDS];
 
 #if PRINT_FPS
     uint16_t fpsCounter = 0;
@@ -70,6 +78,13 @@ long _lastBatteryUpdateMillis = millis();  // store when we last updated the bat
 void clearStrip() {
   ledstrip.ClearTo(COLOR_OFF);
   ledstrip.Show();
+}
+
+
+/** Sets the a pixel on the lightstrip with a given brightness. */
+void SetPixelColor(uint16_t n, RgbColor c, uint8_t brightness){
+    RgbColor newColor = RgbColor(c.R*((float)brightness/100), c.G*((float)brightness/100), c.B*((float)brightness/100));
+    ledstrip.SetPixelColor(n, newColor);
 }
 
 
@@ -109,7 +124,7 @@ void registerWithServer() {
   mcast.stop();
 
   if (!serverIp) {
-    Serial.println(" no server found!");
+    Serial.println(" no server found!"); 
   } else {
     Serial.print(" server found at ");
     Serial.println(serverIp);
@@ -130,10 +145,10 @@ void registerWithServer() {
       client.write(buffer, 2);  // Send the 2-byte value
       client.stop();
       Serial.println(" client registered!");
+      _lastPacketReceived = millis();  // only try to connect to the server once a second
     }
   }
-
-  _lastPacketReceived = millis();  // only try to connect to the server once a second
+  
 }
 
 
@@ -192,6 +207,76 @@ void batteryStatusAnimationUpdate(const AnimationParam& param) {
 }
 
 
+void playPingpongAnimation() {
+  clearStrip();
+
+  Serial.println("Playing pingpong");
+
+  // innitialize data structures
+  _animationColor[0] = 0; 
+  _animationColor[1] = 0;
+  _animationColor[2] = 255;  // we start with blue
+  
+  for (int led=0; led<NUM_LEDS; led++){
+    _animationArrayColor[led] = COLOR_OFF;
+    _animationArrayBrightness[led] = 0;
+  }
+
+  animations.StartAnimation(
+    ANIMATION_CHANNEL_PINGPONG,
+    ANIMATION_SECONDS_PINGPONG * 1000,
+    pingpongAnimationUpdate
+  );
+}
+
+
+void pingpongAnimationUpdate(const AnimationParam& param) {
+  // we fake a progress that's twice the actual progress, so the battery level can be seen half of the time
+  float fakeProgress = 2 * param.progress;  
+  //  Serial.println(param.progress);
+  
+  if (param.state == AnimationState_Completed) {
+      playNextAnimation();
+  } else {
+    if (fakeProgress < 1.0) {
+      /* We want the pingpong animation to run ANIMATION_LOOPS_PINGPONG loops */
+      int fullAnimation = 360 * ANIMATION_LOOPS_PINGPONG;
+      float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
+      float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
+      float waveNorm = (wave + 1) / 2;  // .. so we normalise it here
+      uint8_t pixelOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
+
+
+      // cycle through the colors - 510 = 2 * 255, so we cycle up and down the spectrum
+      _animationColor[0] = (_animationColor[0] + 1) % 510;  // red cycles at speed 1
+      _animationColor[1] = (_animationColor[1] + 1) % 510;  // green cycles at speed 1
+      _animationColor[2] = (_animationColor[2] + 1) % 510;  // blue cycles at speed 1
+
+      RgbColor colorToSet = RgbColor(
+        _animationColor[0] / 2,
+        _animationColor[1] / 2,
+        _animationColor[2] / 2
+      );
+
+      _animationArrayColor[pixelOn] = colorToSet;
+
+      for (int p=0; p<NUM_LEDS; p++) {  
+        if (p == pixelOn) { // set one pixel on and to full brightness
+          _animationArrayBrightness[p] = 100;
+        } else { // reduce brightness of all other leds
+          _animationArrayBrightness[p] = 0.95 * _animationArrayBrightness[p];
+        }
+        SetPixelColor(
+          p,
+          _animationArrayColor[p], 
+          _animationArrayBrightness[p]
+        );
+      }  
+    }
+  }
+}
+
+
 /** This measures the battery level and plays an animation on the strip to show the battery level. */
 void playBatteryAnimation() {
   clearStrip(); // turn all LEDs off, so we get a clean battery reading  
@@ -205,6 +290,17 @@ void playBatteryAnimation() {
 }
 
 
+void playNextAnimation() {
+  clearStrip();
+  Serial.println("Playing next animation");
+  playPingpongAnimation();
+}
+
+
+/*
+ * Tries to connect to the configured Wifi
+ * @return true if successful, false otherwise
+ */
 void connectToWifi() {
   Serial.println(" ");
   Serial.printf("Connecting to %s ...\n", ssid);
@@ -213,36 +309,42 @@ void connectToWifi() {
   WiFi.begin(ssid, password);  // we use DHCP for the ip configuration
 }
 
+bool isWifiConnected() {
+  return WiFi.status() == WL_CONNECTED;
+}
+
 
 /**Renders an animation while the network is still connecting. */
 void networkStatusUpdate(const AnimationParam& param) {
-    if (!animations.IsAnimationActive(ANIMATION_CHANNEL_NETWORK)) { // after we stopped the animation, stop coming in here
-      return;
-    }
-    // Serial.println(param.progress);
+    if (param.state == AnimationState_Completed) {
+      // if the network connection success hasn't stopped this,
+      // we just go into animation mode
+      Serial.println("network animation complete");
+      playNextAnimation();
+    } else {
+      int fullAnimation = 10 * 360; // we want the white leds to move up and down 10 times, at most
+      float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
+      float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
+      float waveNorm = (wave + 1) / 2;  // .. so we normalise itbo here
+      float pixelsOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
 
-    int fullAnimation = 10 * 360; // we want the white leds to move up and down 10 times, at most
-    float angle = ((param.progress * fullAnimation) - 90) * (M_PI / 180);  // -90 => start at the bottom of the sine wave
-    float wave = sin(angle);  // this will be a value between -1 and 1, we need it between 0 and 1 ...
-    float waveNorm = (wave + 1) / 2;  // .. so we normalise itbo here
-    float pixelsOn = waveNorm * NUM_LEDS;  // ... and finally multiply with the number of LEDs we have
-
-    for (int p=0; p<NUM_LEDS; p++) {  // the pixel index
-      if (p < pixelsOn) {
-        ledstrip.SetPixelColor(p, RgbColor(255, 255, 255));  // white
-      } else {
-        ledstrip.SetPixelColor(p, COLOR_OFF);  
+      for (int p=0; p<NUM_LEDS; p++) {  // the pixel index
+        if (p < pixelsOn) {
+          ledstrip.SetPixelColor(p, RgbColor(255, 255, 255));  // white
+        } else {
+          ledstrip.SetPixelColor(p, COLOR_OFF);  
+        }
+      }  
+      
+      if (isWifiConnected()) {
+        Serial.println(" ");
+        Serial.printf("Connected to %s\n", ssid);
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        animations.StopAnimation(ANIMATION_CHANNEL_NETWORK);
+        animations.Pause(); // stop all animations
+        clearStrip();
       }
-    }  
-    
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println(" ");
-      Serial.printf("Connected to %s\n", ssid);
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-      animations.StopAnimation(ANIMATION_CHANNEL_NETWORK);
-      animations.Pause(); // stop all animations
-      clearStrip();
     }
 }
 
@@ -253,7 +355,7 @@ void playNetworkStatusAnimation() {
   if (!animations.IsAnimationActive(ANIMATION_CHANNEL_NETWORK)) {
     animations.StartAnimation(
       ANIMATION_CHANNEL_NETWORK,
-      ANIMATION_SECONDS_NETWORK * 1000,
+      WIFI_CONNECTION_TIMEOUT_SECONDS * 1000,
       networkStatusUpdate
     );
   }
@@ -274,11 +376,11 @@ void setup() {
     ledstrip.Show();//Clear the strip for use
 
     connectToWifi();
-        
+    
     // start listening for messages from the server
     port.begin(localPort);
     _lastPacketReceived = millis() - (SERVER_TIMEOUT_SECONDS * 1000); // start the count
-    
+      
     playBatteryAnimation();  // measure battery level and display on the stip
 }
 
