@@ -35,12 +35,12 @@ const char* password = MY_WIFI_PASSWORD;  // your WiFi password
 #define ANIMATION_CHANNEL_POLICE 4
 #define ANIMATION_SECONDS_BATTERY 2    // we want the battery animation to take 2 seconds
 #define ANIMATION_SECONDS_PINGPONG 120  // run for 2 minutes seconds and ...
-#define ANIMATION_SECONDS_RAINBOW 10
-#define ANIMATION_SECONDS_POLICE 10
+#define ANIMATION_SECONDS_RAINBOW 120
+#define ANIMATION_SECONDS_POLICE 120
 
 #define ANIMATION_PINGPONG_SECONDS_PER_LOOP 5
-#define ANIMATION_POLICE_SECONDS_FLIP_FLOP 1
-#define ANIMATION_POLICE_STROBO_PER_SECOND 10
+#define ANIMATION_POLICE_FLIP_FLOP_PER_SECOND 2
+#define ANIMATION_POLICE_STROBO_PER_SECOND 8
 #define ANIMATION_POLICE_NUM_LIGHTS 20
 
 #define WIFI_CONNECTION_TIMEOUT_SECONDS 1  // we wait only a few seonds for the wifi before giving up
@@ -301,19 +301,33 @@ void policeAnimationUpdate(const AnimationParam& param) {
       playNextAnimation();
   } else {
     
-    // calculate which section of lights should be active
     int secondWeAreIn = param.progress * ANIMATION_SECONDS_POLICE;
-    uint8_t section = (secondWeAreIn / ANIMATION_POLICE_SECONDS_FLIP_FLOP) % 2;
+    uint8_t partsOfASecond = ((param.progress * ANIMATION_SECONDS_POLICE) - secondWeAreIn) * 100;
+
+    // calculate which section of lights should be active
+    uint8_t onSection = partsOfASecond / (100 / ANIMATION_POLICE_FLIP_FLOP_PER_SECOND);
 
     // calculate the strobo
-    float partsOfASecond = (param.progress * ANIMATION_SECONDS_POLICE) - secondWeAreIn;
+    bool onOff = (partsOfASecond / ANIMATION_POLICE_STROBO_PER_SECOND) % 2;
 
-    printf("section: %d second: %d parts: %2.5f\n", section, secondWeAreIn, partsOfASecond);
-    
-    // ANIMATION_POLICE_STROBO_PER_SECOND
+    //printf("onSection: %d second: %d onOff: %s parts: %d\n", onSection, secondWeAreIn, onOff? "on": "off", partsOfASecond);
 
     // set lights
-
+    for (int renderedSection=0; renderedSection<2; renderedSection++){
+      int fromLed = NUM_LEDS - ((renderedSection+1)*ANIMATION_POLICE_NUM_LIGHTS);
+      for (int led=fromLed; led<fromLed+ANIMATION_POLICE_NUM_LIGHTS; led++){
+        if (renderedSection == onSection && onOff) {
+          ledstrip.SetPixelColor(
+            led, 
+            //RgbColor(0, 255, 0)  // green
+            //RgbColor(100, 41, 71)  // hot pink
+            RgbColor(127, 0, 255)  // violet
+          );  // green
+        } else {
+          ledstrip.SetPixelColor(led, COLOR_OFF);  
+        }
+      }
+    }
   }
 }
 
@@ -379,20 +393,18 @@ void playNextAnimation() {
   clearStrip();
   Serial.println("Playing next animation");
 
-  playPoliceAnimation();
-
-  // _lastAnimation = (_lastAnimation + 1) % 2;
-  // switch (_lastAnimation) {
-  //   case 0:
-  //     playRainbowAnimation();
-  //     break;
-  //   case 1:
-  //     playPingpongAnimation();
-  //     break;
-  //   case 2: 
-  //     playPoliceAnimation();
-  //     break;
-  // }
+  _lastAnimation = (_lastAnimation + 1) % 3;
+  switch (_lastAnimation) {
+    case 0:
+      playPingpongAnimation();
+      break;
+    case 1:
+      playRainbowAnimation();
+      break;
+    case 2: 
+      playPoliceAnimation();
+      break;
+  }
   
 }
 
